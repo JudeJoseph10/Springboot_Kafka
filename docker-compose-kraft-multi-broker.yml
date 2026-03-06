@@ -1,0 +1,162 @@
+version: '3.8'
+
+services:
+
+  ############################################
+  # Kafka Broker 1
+  ############################################
+  kafka1:
+    image: apache/kafka:latest
+    container_name: kafka1
+    hostname: kafka1
+    ports:
+      - "9094:9094"   # External access
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_CLUSTER_ID: 'energy-tracker-cluster-1'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+
+      ############################################
+      # Raft Quorum (ALL 3 NODES)
+      ############################################
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      ############################################
+      # Listeners
+      ############################################
+      KAFKA_LISTENERS: >
+        PLAINTEXT://0.0.0.0:9092,
+        EXTERNAL://0.0.0.0:9094,
+        CONTROLLER://0.0.0.0:9093
+
+      KAFKA_ADVERTISED_LISTENERS: >
+        PLAINTEXT://kafka1:9092,
+        EXTERNAL://localhost:9094
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
+        CONTROLLER:PLAINTEXT,
+        PLAINTEXT:PLAINTEXT,
+        EXTERNAL:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      ############################################
+      # Multi-node replication settings
+      ############################################
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    volumes:
+      - ./data/kafka1:/var/lib/kafka/data
+
+
+  ############################################
+  # Kafka Broker 2
+  ############################################
+  kafka2:
+    image: apache/kafka:latest
+    container_name: kafka2
+    hostname: kafka2
+    ports:
+      - "9095:9094"
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_CLUSTER_ID: 'energy-tracker-cluster-1'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      KAFKA_LISTENERS: >
+        PLAINTEXT://0.0.0.0:9092,
+        EXTERNAL://0.0.0.0:9094,
+        CONTROLLER://0.0.0.0:9093
+
+      KAFKA_ADVERTISED_LISTENERS: >
+        PLAINTEXT://kafka2:9092,
+        EXTERNAL://localhost:9095
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
+        CONTROLLER:PLAINTEXT,
+        PLAINTEXT:PLAINTEXT,
+        EXTERNAL:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    volumes:
+      - ./data/kafka2:/var/lib/kafka/data
+
+
+  ############################################
+  # Kafka Broker 3
+  ############################################
+  kafka3:
+    image: apache/kafka:latest
+    container_name: kafka3
+    hostname: kafka3
+    ports:
+      - "9096:9094"
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_CLUSTER_ID: 'energy-tracker-cluster-1'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka1:9093,2@kafka2:9093,3@kafka3:9093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+
+      KAFKA_LISTENERS: >
+        PLAINTEXT://0.0.0.0:9092,
+        EXTERNAL://0.0.0.0:9094,
+        CONTROLLER://0.0.0.0:9093
+
+      KAFKA_ADVERTISED_LISTENERS: >
+        PLAINTEXT://kafka3:9092,
+        EXTERNAL://localhost:9096
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: >
+        CONTROLLER:PLAINTEXT,
+        PLAINTEXT:PLAINTEXT,
+        EXTERNAL:PLAINTEXT
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    volumes:
+      - ./data/kafka3:/var/lib/kafka/data
+
+
+  ############################################
+  # Kafka UI
+  ############################################
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8070:8080"
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    environment:
+      KAFKA_CLUSTERS_0_NAME: kraft-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    restart: unless-stopped
